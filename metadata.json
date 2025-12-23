@@ -1,0 +1,8 @@
+{
+  "name": "Influencer Hub & Engagement Platform",
+  "description": "A high-end promotional platform for influencers, sellers, and customers featuring video engagement, role-based applications, and a secure reward spin system.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
