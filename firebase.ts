@@ -1,28 +1,50 @@
 
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getDatabase } from 'firebase/database';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { getDatabase, Database } from 'firebase/database';
 
 /**
- * Firebase configuration
- * We check both VITE_ prefixed and standard environment variables.
- * Vercel environment variables are often injected as process.env.VARIABLE_NAME.
+ * Robust environment variable extraction.
+ * Handles cases where 'process' might be undefined or variables are missing prefixes.
  */
-const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY || "",
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || process.env.FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.VITE_FIREBASE_DATABASE_URL || process.env.FIREBASE_DATABASE_URL,
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.VITE_FIREBASE_APP_ID || process.env.FIREBASE_APP_ID
+const getEnv = (key: string): string => {
+  const env = (typeof process !== 'undefined' ? process.env : {}) as any;
+  return env[`VITE_${key}`] || env[key] || "";
 };
 
-// Ensure critical fields are present to avoid the "Can't determine Firebase Database URL" fatal error
-if (!firebaseConfig.projectId || !firebaseConfig.databaseURL) {
-  console.error("Firebase configuration is missing projectId or databaseURL. Please check your environment variables.");
+const firebaseConfig = {
+  apiKey: getEnv('FIREBASE_API_KEY'),
+  authDomain: getEnv('FIREBASE_AUTH_DOMAIN'),
+  databaseURL: getEnv('FIREBASE_DATABASE_URL'),
+  projectId: getEnv('FIREBASE_PROJECT_ID'),
+  storageBucket: getEnv('FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getEnv('FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getEnv('FIREBASE_APP_ID')
+};
+
+let app: FirebaseApp | undefined;
+let authInstance: Auth | undefined;
+let dbInstance: Database | undefined;
+
+// Validate essential configuration before initialization
+if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+  try {
+    app = initializeApp(firebaseConfig);
+    authInstance = getAuth(app);
+    dbInstance = getDatabase(app);
+  } catch (error) {
+    console.error("Failed to initialize Firebase:", error);
+  }
+} else {
+  console.error(
+    "Firebase configuration is incomplete. " +
+    "Please ensure FIREBASE_API_KEY and FIREBASE_PROJECT_ID are set in your environment variables. " +
+    "Missing keys: ", 
+    Object.entries(firebaseConfig).filter(([_, v]) => !v).map(([k]) => k)
+  );
 }
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getDatabase(app);
+// Export as non-undefined to match usage, but initializeApp error handling above prevents total crash
+export const auth = authInstance as Auth;
+export const db = dbInstance as Database;
+export { app };
